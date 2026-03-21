@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { forceLogout } from "../actions";
 
 export default function ReservationsPage() {
   const router = useRouter();
@@ -13,11 +14,24 @@ export default function ReservationsPage() {
 
   const handleLogout = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/v1/auth/logout", {
+      // 1. บอก Backend ให้ลบ Session (ถ้ามี)
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
         method: "GET",
         credentials: "include",
       });
-      if (res.ok) window.location.href = "/login";
+
+      // 2. สั่ง Next.js API ของเราให้ทำลาย Cookie ทิ้งแบบด่วนๆ
+      await fetch('/api/logout', { method: 'POST' });
+
+      // 3. ลบเผื่อฝั่งหน้าบ้านด้วย (กันเหนียว)
+      document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+
+      // 4. บังคับย้ายหน้า (เอา alert ออก เพื่อไม่ให้การเปลี่ยนหน้าชะงัก)
+      // เพิ่ม setTimeout นิดนึง (0.5 วิ) ให้เบราว์เซอร์ล้าง Cookie Jar ให้เสร็จก่อนวิ่งไปหา Middleware
+      setTimeout(() => {
+        window.location.replace("/login");
+      }, 500); 
+
     } catch (err) {
       console.error("Logout Error:", err);
     }
@@ -28,7 +42,7 @@ export default function ReservationsPage() {
     if (!confirm("คุณยืนยันที่จะยกเลิกการจองนี้ใช่หรือไม่?")) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/v1/bookings/${bookingId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/bookings/${bookingId}`, {
         method: "DELETE",
         credentials: "include",
       });
@@ -51,7 +65,7 @@ export default function ReservationsPage() {
   useEffect(() => {
     const fetchBookings = async () => {
       try {
-        const userRes = await fetch("http://localhost:5000/api/v1/auth/me", {
+        const userRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
           method: "GET",
           credentials: "include",
         });
@@ -68,7 +82,7 @@ export default function ReservationsPage() {
         }
         setUser(userData.data);
 
-        const bookingRes = await fetch("http://localhost:5000/api/v1/bookings", {
+        const bookingRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/bookings`, {
           method: "GET",
           credentials: "include",
           cache: "no-store",
@@ -115,7 +129,13 @@ export default function ReservationsPage() {
         <Link href="/" className="text-2xl font-black tracking-tight cursor-pointer">
           <span className="text-blue-600">HAP</span> Rentals
         </Link>
+
         <div className="hidden md:flex items-center space-x-8 text-sm font-semibold text-zinc-500">
+
+          <Link href="/providers" className="cursor-pointer hover:text-zinc-900 transition-colors">
+            Providers
+          </Link>
+          
           <Link href="/" className="cursor-pointer hover:text-zinc-900 transition-colors">Cars</Link>
           <span className="cursor-pointer text-blue-600 border-b-2 border-blue-600 pb-1">My Reservations</span>
         </div>
@@ -191,9 +211,9 @@ export default function ReservationsPage() {
 
                 {/* ✅ ส่วนของเพื่อนข้อ 6 และ 7 (ปุ่ม Edit และ Delete) */}
                 <div className="flex flex-col w-full md:w-32 gap-3 shrink-0 mt-4 md:mt-0 md:ml-4 md:border-l md:border-zinc-100 md:pl-6">
-                  {/* ปุ่ม Edit: ดันไปหน้า /reservation/edit/[id] */}
+                  {/* ปุ่ม Edit: ดันไปหน้า /reservations/edit/[id] */}
                   <button 
-                    onClick={() => router.push(`/reservation/edit/${booking._id}`)}
+                    onClick={() => router.push(`/reservations/edit/${booking._id}`)}
                     className="w-full bg-zinc-900 text-white px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-zinc-800 transition-colors shadow-sm"
                   >
                     Edit

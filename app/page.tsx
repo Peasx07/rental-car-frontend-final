@@ -36,14 +36,24 @@ export default function Home() {
 
   const handleLogout = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/v1/auth/logout", {
+      // 1. บอก Backend ให้ลบ Session (ถ้ามี)
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
         method: "GET",
-        credentials: "include", 
+        credentials: "include",
       });
-      if (res.ok) {
-        alert("ออกจากระบบสำเร็จ");
-        window.location.href = "/login";
-      }
+
+      // 2. สั่ง Next.js API ของเราให้ทำลาย Cookie ทิ้งแบบด่วนๆ
+      await fetch('/api/logout', { method: 'POST' });
+
+      // 3. ลบเผื่อฝั่งหน้าบ้านด้วย (กันเหนียว)
+      document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+
+      // 4. บังคับย้ายหน้า (เอา alert ออก เพื่อไม่ให้การเปลี่ยนหน้าชะงัก)
+      // เพิ่ม setTimeout นิดนึง (0.5 วิ) ให้เบราว์เซอร์ล้าง Cookie Jar ให้เสร็จก่อนวิ่งไปหา Middleware
+      setTimeout(() => {
+        window.location.replace("/login");
+      }, 500); 
+
     } catch (err) {
       console.error("Logout Error:", err);
     }
@@ -71,7 +81,7 @@ export default function Home() {
     };
 
     try {
-      const res = await fetch(`http://localhost:5000/api/v1/cars/${selectedCar._id}/bookings`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cars/${selectedCar._id}/bookings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -93,7 +103,7 @@ export default function Home() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const userRes = await fetch("http://localhost:5000/api/v1/auth/me", {
+        const userRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
           method: "GET",
           credentials: "include",
         });
@@ -102,7 +112,7 @@ export default function Home() {
           const userData = await userRes.json();
           if (userData.success) {
             setUser(userData.data);
-            const carsRes = await fetch("http://localhost:5000/api/v1/cars", {
+            const carsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cars`, {
               method: "GET",
               credentials: "include", 
             });
@@ -137,8 +147,18 @@ export default function Home() {
           <span className="text-blue-600">HAP</span> Rentals
         </div>
         <div className="hidden md:flex items-center space-x-8 text-sm font-semibold text-zinc-500">
-          <span className="cursor-pointer hover:text-zinc-900 transition-colors">Dashboard</span>
-          <span className="cursor-pointer hover:text-zinc-900 transition-colors">Providers</span>
+          
+          {/* ซ่อน Dashboard ให้เฉพาะ Admin เห็น */}
+          {user?.role === 'admin' && (
+            <Link href="/dashboard" className="cursor-pointer hover:text-zinc-900 transition-colors">
+              Dashboard
+            </Link>
+          )}
+
+          <Link href="/providers" className="cursor-pointer hover:text-zinc-900 transition-colors">
+            Providers
+          </Link>
+          
           <span className="cursor-pointer text-blue-600 border-b-2 border-blue-600 pb-1">Cars</span>
           <Link href="/reservations" className="cursor-pointer hover:text-zinc-900 transition-colors">Reservations</Link>
         </div>
