@@ -4,35 +4,48 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+// 🌟 ย้าย apiUrl มาไว้ข้างนอก
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
+
 export default function ProvidersPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [providers, setProviders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // ฟังก์ชัน Logout แบบเดิม
   const handleLogout = async () => {
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
+      await fetch(`${apiUrl}/auth/logout`, {
         method: "GET",
         credentials: "include",
       });
-      await fetch('/api/logout', { method: 'POST' });
+    } catch (err: any) {
+      console.log("Backend unreachable during logout, proceeding with local logout:", err.message);
+    } finally {
+      try {
+        await fetch('/api/logout', { method: 'POST' });
+      } catch (e) {
+        console.log("Local API logout failed, clearing cookies manually.");
+      }
       document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       setTimeout(() => {
         window.location.replace("/login");
       }, 500); 
-    } catch (err) {
-      console.error("Logout Error:", err);
     }
   };
 
   useEffect(() => {
+    // 🌟 1. สร้าง AbortController
+    const controller = new AbortController();
+    const signal = controller.signal;
+
     const fetchData = async () => {
       try {
-        const userRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+        // 🌟 2. แนบ signal เข้าไปตอน fetch auth
+        const userRes = await fetch(`${apiUrl}/auth/me`, {
           method: "GET",
           credentials: "include",
+          signal,
         });
 
         if (userRes.ok) {
@@ -40,9 +53,11 @@ export default function ProvidersPage() {
           if (userData.success) {
             setUser(userData.data);
             
-            const providersRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/providers`, {
+            // 🌟 3. แนบ signal เข้าไปตอน fetch providers
+            const providersRes = await fetch(`${apiUrl}/providers`, {
               method: "GET",
               credentials: "include", 
+              signal,
             });
             const providersData = await providersRes.json();
             
@@ -52,14 +67,27 @@ export default function ProvidersPage() {
           } else {
             router.push("/login");
           }
+        } else {
+            router.push("/login");
         }
-      } catch (err) {
-        console.error("Fetch Error:", err);
+      } catch (err: any) {
+        // 🌟 4. ดักจับ Error ตอนเปลี่ยนหน้า
+        if (err.name === 'AbortError' || err.message === 'Failed to fetch') {
+          console.log("Fetch aborted on Providers page due to fast navigation.");
+        } else {
+          console.error("Fetch Error:", err);
+        }
       } finally {
         setLoading(false);
       }
     };
+    
     fetchData();
+
+    // 🌟 5. Cleanup function
+    return () => {
+      controller.abort();
+    };
   }, [router]);
 
   if (loading) return (

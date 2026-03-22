@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+// 🌟 ย้าย apiUrl ออกมาไว้ข้างนอกให้เรียกใช้ง่ายและชัวร์
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
+
 // --- Icons ---
 const MailIcon = () => (
   <svg className="size-5 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -29,28 +32,29 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+      // 🌟 ใช้ apiUrl ที่ประกาศไว้
+      const res = await fetch(`${apiUrl}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
-        credentials: "include", // สำคัญมาก เพื่อรับ Cookie Token จาก Backend
+        credentials: "include", 
       });
 
       const data = await res.json();
 
       if (data.success) {
         alert("เข้าสู่ระบบสำเร็จ!");
-        // ถ้าต้องการเก็บ Token ลง localStorage (กรณี Backend ไม่ได้ส่งเป็น Cookie อย่างเดียว)
         if (data.token) {
           localStorage.setItem("token", data.token);
         }
-       window.location.href = "/";
+        window.location.href = "/";
       } else {
         alert("เข้าสู่ระบบไม่สำเร็จ: " + data.message);
       }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    } catch (error: any) {
+      // 🌟 ดัก Error กรณีที่ติดต่อ Backend ไม่ได้เลย
+      console.error("Login Error:", error);
+      alert(`ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้: โปรดตรวจสอบว่า Backend รันอยู่ (Error: ${error.message})`);
     }
   };
 

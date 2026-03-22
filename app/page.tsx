@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+// 🌟 ย้าย apiUrl มาไว้ข้างนอก
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
+
 export default function Home() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
@@ -14,9 +17,7 @@ export default function Home() {
   const [pickUpDate, setPickUpDate] = useState("");
   const [dropOffDate, setDropOffDate] = useState("");
 
-  // --- 💡 ฟังก์ชันช่วยเลือกรูปภาพ: แก้ไขเติม /img/ และป้องกัน Error ถ้าไม่มีชื่อรุ่น ---
   const getCarImage = (model?: string, make?: string) => {
-    // ใช้ fallback || "" เพื่อป้องกัน error เมื่อ model หรือ make เป็น undefined
     const name = `${model || ""} ${make || ""}`.toLowerCase();
     
     if (name.includes("3 series") || name.includes("bmw")) return "/img/bmw.jpg";
@@ -24,7 +25,7 @@ export default function Home() {
     if (name.includes("city") || name.includes("honda")) return "/img/honda.jpg";
     if (name.includes("pajero") || name.includes("mitsu")) return "/img/mitsu.jpg";
     if (name.includes("nissan")) return "/img/nissan.jpg";
-    return "/img/default-car.png"; // เผื่อกรณีหาไม่เจอ
+    return "/img/default-car.png"; 
   };
 
   let duration = 0;
@@ -38,26 +39,24 @@ export default function Home() {
 
   const handleLogout = async () => {
     try {
-      // 1. บอก Backend ให้ลบ Session (ถ้ามี)
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
+      // 🌟 ใช้ apiUrl แทน
+      await fetch(`${apiUrl}/auth/logout`, {
         method: "GET",
         credentials: "include",
       });
-
-      // 2. สั่ง Next.js API ของเราให้ทำลาย Cookie ทิ้งแบบด่วนๆ
-      await fetch('/api/logout', { method: 'POST' });
-
-      // 3. ลบเผื่อฝั่งหน้าบ้านด้วย (กันเหนียว)
+    } catch (err: any) {
+      console.log("Backend unreachable during logout, proceeding with local logout:", err.message);
+    } finally {
+      try {
+        await fetch('/api/logout', { method: 'POST' });
+      } catch (e) {
+        console.log("Local API logout failed, clearing cookies manually.");
+      }
+      
       document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-
-      // 4. บังคับย้ายหน้า (เอา alert ออก เพื่อไม่ให้การเปลี่ยนหน้าชะงัก)
-      // เพิ่ม setTimeout นิดนึง (0.5 วิ) ให้เบราว์เซอร์ล้าง Cookie Jar ให้เสร็จก่อนวิ่งไปหา Middleware
       setTimeout(() => {
         window.location.replace("/login");
       }, 500); 
-
-    } catch (err) {
-      console.error("Logout Error:", err);
     }
   };
 
@@ -83,7 +82,8 @@ export default function Home() {
     };
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cars/${selectedCar._id}/bookings`, {
+      // 🌟 ใช้ apiUrl แทน
+      const res = await fetch(`${apiUrl}/cars/${selectedCar._id}/bookings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -103,24 +103,32 @@ export default function Home() {
   };
 
   useEffect(() => {
+    // 🌟 1. สร้าง AbortController
+    const controller = new AbortController();
+    const signal = controller.signal;
+
     const fetchData = async () => {
       try {
-        const userRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+        // 🌟 2. ใช้ apiUrl และแนบ signal
+        const userRes = await fetch(`${apiUrl}/auth/me`, {
           method: "GET",
           credentials: "include",
+          signal,
         });
 
         if (userRes.ok) {
           const userData = await userRes.json();
           if (userData.success) {
             setUser(userData.data);
-            const carsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cars`, {
+            
+            // 🌟 3. ใช้ apiUrl และแนบ signal
+            const carsRes = await fetch(`${apiUrl}/cars`, {
               method: "GET",
               credentials: "include", 
+              signal,
             });
             const carsData = await carsRes.json();
             if (carsData.success) {
-              // 💡 ป้องกัน Error กรณี data เป็น null
               const carList = carsData.data || [];
               setCars(carList);
               if (carList.length > 0) setSelectedCar(carList[0]);
@@ -128,16 +136,29 @@ export default function Home() {
           } else {
             router.push("/login");
           }
+        } else {
+            router.push("/login");
         }
-      } catch (err) {
-        console.error("Fetch Error:", err);
+      } catch (err: any) {
+        // 🌟 4. ดัก Error ถ้าผู้ใช้เปลี่ยนหน้า
+        if (err.name === 'AbortError' || err.message === 'Failed to fetch') {
+          console.log("Fetch aborted on Home page due to fast navigation.");
+        } else {
+          console.error("Fetch Error:", err);
+        }
       } finally {
         setLoading(false);
       }
     };
     fetchData();
+
+    // 🌟 5. Cleanup function
+    return () => {
+      controller.abort();
+    };
   }, [router]);
 
+  // 🌟 ย้ายมาเช็ค loading ก่อน return โครงสร้างหลัก (คุณทำถูกแล้ว)
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="p-10 text-center text-zinc-500 font-bold text-xl animate-pulse">กำลังตรวจสอบสิทธิ์การเข้าถึง...</div>
@@ -190,7 +211,7 @@ export default function Home() {
           <div className="flex-1 w-full">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
-              {/* 💡 เช็คก่อนทำ map เพื่อไม่ให้พัง */}
+              {/* 💡 ไม่ต้องแก้ตรงนี้ เพราะมีเช็ค cars && cars.length ไว้แล้ว */}
               {cars && cars.length > 0 ? cars.map((car: any) => (
                 <div key={car._id} className={`bg-white rounded-3xl border ${selectedCar?._id === car._id ? 'border-blue-500 ring-2 ring-blue-100' : 'border-zinc-200'} overflow-hidden shadow-sm hover:shadow-lg transition-all flex flex-col`}>
                   
@@ -208,7 +229,6 @@ export default function Home() {
                         🏢 {car.provider?.name || "Premium Partner"}
                       </span>
                     </div>
-                    {/* 💡 ใส่ค่า fallback เผื่อไม่มีชื่อรุ่น */}
                     <h3 className="text-2xl font-black text-zinc-900 mb-6 truncate">{car.make || "Unknown"} {car.model || ""}</h3>
                     
                     <div className="grid grid-cols-2 gap-y-4 mb-8">
@@ -284,7 +304,7 @@ export default function Home() {
             <div className="bg-zinc-100/80 p-5 rounded-2xl flex items-center justify-between mb-6">
               <span className="font-bold">Total Price</span>
               <p className="text-2xl font-black text-blue-600">
-                ฿{selectedCar && duration > 0 ? (((selectedCar.dailyRate || selectedCar.pricePerDay || 0) * duration) + 1500).toLocaleString() : "0"}
+                ฿{selectedCar && duration > 0 ? (((selectedCar.dailyRate || selectedCar.pricePerDay || 0) * duration)).toLocaleString() : "0"}
               </p>
             </div>
 
