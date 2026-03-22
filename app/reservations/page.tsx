@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { forceLogout } from "../actions";
 
 export default function ReservationsPage() {
   const router = useRouter();
@@ -14,30 +13,20 @@ export default function ReservationsPage() {
 
   const handleLogout = async () => {
     try {
-      // 1. บอก Backend ให้ลบ Session (ถ้ามี)
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
         method: "GET",
         credentials: "include",
       });
-
-      // 2. สั่ง Next.js API ของเราให้ทำลาย Cookie ทิ้งแบบด่วนๆ
       await fetch('/api/logout', { method: 'POST' });
-
-      // 3. ลบเผื่อฝั่งหน้าบ้านด้วย (กันเหนียว)
       document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-
-      // 4. บังคับย้ายหน้า (เอา alert ออก เพื่อไม่ให้การเปลี่ยนหน้าชะงัก)
-      // เพิ่ม setTimeout นิดนึง (0.5 วิ) ให้เบราว์เซอร์ล้าง Cookie Jar ให้เสร็จก่อนวิ่งไปหา Middleware
       setTimeout(() => {
         window.location.replace("/login");
       }, 500); 
-
     } catch (err) {
       console.error("Logout Error:", err);
     }
   };
 
-  // ✅ เพิ่มฟังก์ชัน handleDelete สำหรับเพื่อนที่ทำข้อ 7
   const handleDelete = async (bookingId: string) => {
     if (!confirm("คุณยืนยันที่จะยกเลิกการจองนี้ใช่หรือไม่?")) return;
 
@@ -51,7 +40,6 @@ export default function ReservationsPage() {
 
       if (res.ok) {
         alert("ยกเลิกการจองสำเร็จ!");
-        // ลบรายการออกจากหน้าเว็บทันทีโดยไม่ต้อง Refresh หน้า
         setBookings(bookings.filter(b => b._id !== bookingId));
       } else {
         alert(data.message || "เกิดข้อผิดพลาดในการยกเลิก");
@@ -93,7 +81,6 @@ export default function ReservationsPage() {
         if (bookingRes.ok && bookingData?.success) {
           setBookings(bookingData.data || []);
         } else {
-          console.error("Backend Error Detail:", bookingData?.message);
           setBookings([]); 
         }
 
@@ -125,25 +112,37 @@ export default function ReservationsPage() {
 
   return (
     <main className="min-h-screen bg-[#f8f9fc] text-zinc-900 font-sans pb-20">
+      {/* --- Navbar --- */}
       <nav className="flex items-center justify-between px-8 py-4 bg-white border-b border-zinc-200 shadow-sm sticky top-0 z-10">
         <Link href="/" className="text-2xl font-black tracking-tight cursor-pointer">
           <span className="text-blue-600">HAP</span> Rentals
         </Link>
 
         <div className="hidden md:flex items-center space-x-8 text-sm font-semibold text-zinc-500">
-
           <Link href="/providers" className="cursor-pointer hover:text-zinc-900 transition-colors">
             Providers
           </Link>
-          
           <Link href="/" className="cursor-pointer hover:text-zinc-900 transition-colors">Cars</Link>
           <span className="cursor-pointer text-blue-600 border-b-2 border-blue-600 pb-1">My Reservations</span>
         </div>
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-xs uppercase">
-            {user?.name ? user.name.charAt(0) : "U"}
+        
+        <div className="flex items-center space-x-6">
+          {/* 💡 เพิ่มปุ่ม Admin Panel ตรงนี้ */}
+          {user?.role === 'admin' && (
+            <Link 
+              href="/admin" 
+              className="px-4 py-2 bg-slate-900 text-white text-sm font-bold rounded-xl hover:bg-slate-800 transition shadow-sm"
+            >
+              Admin Panel
+            </Link>
+          )}
+
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-xs uppercase">
+              {user?.name ? user.name.charAt(0) : "U"}
+            </div>
+            <button onClick={handleLogout} className="text-sm font-semibold text-zinc-500 hover:text-red-500 transition-colors">Logout</button>
           </div>
-          <button onClick={handleLogout} className="text-sm font-semibold text-zinc-500 hover:text-red-500 transition-colors">Logout</button>
         </div>
       </nav>
 
@@ -157,7 +156,7 @@ export default function ReservationsPage() {
           <div className="bg-white rounded-3xl p-16 text-center border border-zinc-200 shadow-sm flex flex-col items-center">
             <span className="text-6xl mb-4">📭</span>
             <h2 className="text-xl font-bold text-zinc-800 mb-2">ยังไม่พบข้อมูลการจอง</h2>
-            <p className="text-zinc-400 text-sm mb-6">หากคุณเห็นข้อมูลใน Database แต่ที่นี่ไม่ขึ้น กรุณาเช็ค User ID ใน Backend</p>
+            {/* <p className="text-zinc-400 text-sm mb-6">หากคุณเห็นข้อมูลใน Database แต่ที่นี่ไม่ขึ้น กรุณาเช็ค User ID ใน Backend</p> */}
             <Link href="/" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition-colors">ไปหน้าเลือกจองรถ</Link>
           </div>
         ) : (

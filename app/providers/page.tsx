@@ -30,7 +30,6 @@ export default function ProvidersPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // 1. เช็ค User Session
         const userRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
           method: "GET",
           credentials: "include",
@@ -41,8 +40,6 @@ export default function ProvidersPage() {
           if (userData.success) {
             setUser(userData.data);
             
-            // 2. ดึงข้อมูล Providers ทั้งหมด
-            // ** อย่าลืมเช็คว่า Backend ของคุณใช้ Endpoint ชื่อนี้หรือไม่นะครับ **
             const providersRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/providers`, {
               method: "GET",
               credentials: "include", 
@@ -73,20 +70,28 @@ export default function ProvidersPage() {
 
   return (
     <main className="min-h-screen bg-white text-zinc-900 font-sans">
-      {/* --- Navbar แบบเดียวกับหน้าหลัก --- */}
+      {/* --- Navbar --- */}
       <nav className="flex items-center justify-between px-8 py-4 border-b border-zinc-200">
         <div className="text-2xl font-black tracking-tight">
           <Link href="/"><span className="text-blue-600">HAP</span> Rentals</Link>
         </div>
         <div className="hidden md:flex items-center space-x-8 text-sm font-semibold text-zinc-500">
-          {user?.role === 'admin' && (
-            <Link href="/dashboard" className="cursor-pointer hover:text-zinc-900 transition-colors">Dashboard</Link>
-          )}
           <span className="cursor-pointer text-blue-600 border-b-2 border-blue-600 pb-1">Providers</span>
           <Link href="/" className="cursor-pointer hover:text-zinc-900 transition-colors">Cars</Link>
           <Link href="/reservations" className="cursor-pointer hover:text-zinc-900 transition-colors">Reservations</Link>
         </div>
+        
         <div className="flex items-center space-x-6">
+          {/* 💡 เพิ่มปุ่ม Admin Panel ตรงนี้ */}
+          {user?.role === 'admin' && (
+            <Link 
+              href="/admin" 
+              className="px-4 py-2 bg-slate-900 text-white text-sm font-bold rounded-xl hover:bg-slate-800 transition shadow-sm"
+            >
+              Admin Panel
+            </Link>
+          )}
+
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-xs uppercase overflow-hidden">
                {user?.name ? user.name.charAt(0) : "U"}
@@ -119,7 +124,7 @@ export default function ProvidersPage() {
                 
                 <div className="space-y-3 border-t border-zinc-100 pt-6">
                   <div className="flex items-center text-sm font-semibold text-zinc-700">
-                    <span className="w-6 text-zinc-400">📞</span> {provider.tel || "N/A"}
+                    <span className="w-6 text-zinc-400">📞</span> {provider.tel || provider.telephone || "N/A"}
                   </div>
                 </div>
               </div>

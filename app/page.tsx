@@ -14,15 +14,17 @@ export default function Home() {
   const [pickUpDate, setPickUpDate] = useState("");
   const [dropOffDate, setDropOffDate] = useState("");
 
-  // --- ฟังก์ชันช่วยเลือกรูปภาพจากชื่อรุ่นรถ ---
-  const getCarImage = (model: string, make: string) => {
-    const name = (model + " " + make).toLowerCase();
-    if (name.includes("3 series") || name.includes("bmw")) return "/bmw.jpg";
-    if (name.includes("camry") || name.includes("toyota")) return "/camry.jpg";
-    if (name.includes("city") || name.includes("honda")) return "/honda.jpg";
-    if (name.includes("pajero") || name.includes("mitsu")) return "/mitsu.jpg";
-    if (name.includes("nissan")) return "/nissan.jpg";
-    return "/default-car.png"; // เผื่อกรณีหาไม่เจอ
+  // --- 💡 ฟังก์ชันช่วยเลือกรูปภาพ: แก้ไขเติม /img/ และป้องกัน Error ถ้าไม่มีชื่อรุ่น ---
+  const getCarImage = (model?: string, make?: string) => {
+    // ใช้ fallback || "" เพื่อป้องกัน error เมื่อ model หรือ make เป็น undefined
+    const name = `${model || ""} ${make || ""}`.toLowerCase();
+    
+    if (name.includes("3 series") || name.includes("bmw")) return "/img/bmw.jpg";
+    if (name.includes("camry") || name.includes("toyota")) return "/img/camry.jpg";
+    if (name.includes("city") || name.includes("honda")) return "/img/honda.jpg";
+    if (name.includes("pajero") || name.includes("mitsu")) return "/img/mitsu.jpg";
+    if (name.includes("nissan")) return "/img/nissan.jpg";
+    return "/img/default-car.png"; // เผื่อกรณีหาไม่เจอ
   };
 
   let duration = 0;
@@ -118,8 +120,10 @@ export default function Home() {
             });
             const carsData = await carsRes.json();
             if (carsData.success) {
-              setCars(carsData.data);
-              if (carsData.data.length > 0) setSelectedCar(carsData.data[0]);
+              // 💡 ป้องกัน Error กรณี data เป็น null
+              const carList = carsData.data || [];
+              setCars(carList);
+              if (carList.length > 0) setSelectedCar(carList[0]);
             }
           } else {
             router.push("/login");
@@ -143,18 +147,11 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-white text-zinc-900 font-sans">
       <nav className="flex items-center justify-between px-8 py-4 border-b border-zinc-200">
-        <div className="text-2xl font-black tracking-tight">
-          <span className="text-blue-600">HAP</span> Rentals
-        </div>
+        <Link href="/" className="text-2xl font-black tracking-tight cursor-pointer hover:opacity-80 transition-opacity">
+            <span className="text-blue-600">HAP</span> Rentals
+        </Link>
         <div className="hidden md:flex items-center space-x-8 text-sm font-semibold text-zinc-500">
           
-          {/* ซ่อน Dashboard ให้เฉพาะ Admin เห็น */}
-          {user?.role === 'admin' && (
-            <Link href="/dashboard" className="cursor-pointer hover:text-zinc-900 transition-colors">
-              Dashboard
-            </Link>
-          )}
-
           <Link href="/providers" className="cursor-pointer hover:text-zinc-900 transition-colors">
             Providers
           </Link>
@@ -162,7 +159,17 @@ export default function Home() {
           <span className="cursor-pointer text-blue-600 border-b-2 border-blue-600 pb-1">Cars</span>
           <Link href="/reservations" className="cursor-pointer hover:text-zinc-900 transition-colors">Reservations</Link>
         </div>
+        
         <div className="flex items-center space-x-6">
+          {user?.role === 'admin' && (
+            <Link 
+              href="/admin" 
+              className="px-4 py-2 bg-slate-900 text-white text-sm font-bold rounded-xl hover:bg-slate-800 transition shadow-sm"
+            >
+              Admin Panel
+            </Link>
+          )}
+
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-xs uppercase overflow-hidden">
                {user?.name ? user.name.charAt(0) : "U"}
@@ -182,14 +189,15 @@ export default function Home() {
         <div className="flex flex-col lg:flex-row gap-10 items-start">
           <div className="flex-1 w-full">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {cars.map((car: any) => (
+              
+              {/* 💡 เช็คก่อนทำ map เพื่อไม่ให้พัง */}
+              {cars && cars.length > 0 ? cars.map((car: any) => (
                 <div key={car._id} className={`bg-white rounded-3xl border ${selectedCar?._id === car._id ? 'border-blue-500 ring-2 ring-blue-100' : 'border-zinc-200'} overflow-hidden shadow-sm hover:shadow-lg transition-all flex flex-col`}>
                   
-                  {/* --- 💡 ส่วนแสดงรูปภาพที่แก้ไขแล้ว --- */}
                   <div className="w-full h-[220px] bg-white flex items-center justify-center p-4 relative">
                       <img 
                         src={getCarImage(car.model, car.make)} 
-                        alt={car.model}
+                        alt={car.model || "car"}
                         className="max-w-full max-h-full object-contain"
                       />
                   </div>
@@ -200,7 +208,8 @@ export default function Home() {
                         🏢 {car.provider?.name || "Premium Partner"}
                       </span>
                     </div>
-                    <h3 className="text-2xl font-black text-zinc-900 mb-6 truncate">{car.make} {car.model}</h3>
+                    {/* 💡 ใส่ค่า fallback เผื่อไม่มีชื่อรุ่น */}
+                    <h3 className="text-2xl font-black text-zinc-900 mb-6 truncate">{car.make || "Unknown"} {car.model || ""}</h3>
                     
                     <div className="grid grid-cols-2 gap-y-4 mb-8">
                       <div>
@@ -227,14 +236,17 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="col-span-full py-10 text-center text-zinc-500 font-medium bg-zinc-50 rounded-2xl border border-zinc-200">
+                  กำลังโหลดข้อมูล หรือยังไม่มีรถในระบบ
+                </div>
+              )}
             </div>
           </div>
 
           <div className="w-full lg:w-[420px] bg-[#f8f9fc] rounded-[32px] p-8 border border-zinc-200 sticky top-10">
             <h2 className="text-xl font-bold text-zinc-900 mb-6">Reserve Your Vehicle</h2>
 
-            {/* --- 💡 รูปภาพรถใน Sidebar --- */}
             <div className="bg-white p-3 rounded-2xl flex items-center gap-4 mb-6 shadow-sm border border-zinc-100">
               <div className="w-16 h-12 bg-zinc-100 rounded-lg flex items-center justify-center overflow-hidden">
                 {selectedCar ? (
@@ -244,7 +256,7 @@ export default function Home() {
               <div className="flex-1 truncate">
                 <p className="text-[10px] font-bold text-zinc-400 uppercase">Selected Car</p>
                 <p className="text-sm font-bold text-zinc-900 truncate">
-                  {selectedCar ? `${selectedCar.make} ${selectedCar.model}` : "Select a car first"}
+                  {selectedCar ? `${selectedCar.make || ""} ${selectedCar.model || ""}` : "Select a car first"}
                 </p>
               </div>
             </div>
