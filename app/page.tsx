@@ -48,6 +48,11 @@ export default function Home() {
     } finally {
       // 🚨 ล้างข้อมูลการเข้าสู่ระบบทั้งหมด
       localStorage.removeItem("token");
+      try {
+        await fetch('/api/logout', { method: 'POST' });
+      } catch {
+        // ignore local api logout error
+      }
       document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       window.location.replace("/login");
     }

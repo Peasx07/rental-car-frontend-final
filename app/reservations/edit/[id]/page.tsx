@@ -29,9 +29,13 @@ export default function EditReservationPage() {
 
   useEffect(() => {
     const fetchDetails = async () => {
+      const localToken = localStorage.getItem("token");
       try {
         const bookingRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/bookings/${bookingId}`, {
           method: "GET",
+          headers: {
+            ...(localToken ? { Authorization: `Bearer ${localToken}` } : {}),
+          },
           credentials: "include",
         });
 
@@ -50,7 +54,12 @@ export default function EditReservationPage() {
 
           // แอบดึงข้อมูลรูปรถเพิ่ม เผื่อ Backend ไม่ได้แนบรูปมาในเส้น Get Booking
           const carIdFetch = booking.car._id || booking.car;
-          const carRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cars/${carIdFetch}`);
+          const carRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/cars/${carIdFetch}`, {
+            headers: {
+              ...(localToken ? { Authorization: `Bearer ${localToken}` } : {}),
+            },
+            credentials: "include",
+          });
           if (carRes.ok) {
             const carResult = await carRes.json();
             setCarData(carResult.data); // อัปเดตข้อมูลทับ เพื่อให้ได้รูปมาแสดง
@@ -84,9 +93,13 @@ export default function EditReservationPage() {
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const localToken = localStorage.getItem("token");
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/bookings/${bookingId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(localToken ? { Authorization: `Bearer ${localToken}` } : {}),
+        },
         body: JSON.stringify(formData),
         credentials: "include",
       });

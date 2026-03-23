@@ -40,10 +40,14 @@ export default function ProvidersPage() {
     const signal = controller.signal;
 
     const fetchData = async () => {
+      const localToken = localStorage.getItem("token");
       try {
         // 🌟 2. แนบ signal เข้าไปตอน fetch auth
         const userRes = await fetch(`${apiUrl}/auth/me`, {
           method: "GET",
+          headers: {
+            ...(localToken ? { Authorization: `Bearer ${localToken}` } : {}),
+          },
           credentials: "include",
           signal,
         });
@@ -56,6 +60,9 @@ export default function ProvidersPage() {
             // 🌟 3. แนบ signal เข้าไปตอน fetch providers
             const providersRes = await fetch(`${apiUrl}/providers`, {
               method: "GET",
+              headers: {
+                ...(localToken ? { Authorization: `Bearer ${localToken}` } : {}),
+              },
               credentials: "include", 
               signal,
             });

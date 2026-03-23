@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
+
 // --- SVG Icons (เพื่อความสวยงามและคมชัด) ---
 const UserIcon = () => (
   <svg className="size-5 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -43,7 +45,7 @@ export default function RegisterPage() {
     e.preventDefault();
     try {
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
+      const res = await fetch(`${apiUrl}/auth/register`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json" 

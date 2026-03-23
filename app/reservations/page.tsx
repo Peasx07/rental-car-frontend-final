@@ -64,10 +64,14 @@ export default function ReservationsPage() {
     const signal = controller.signal;
 
     const fetchBookings = async () => {
+      const localToken = localStorage.getItem("token");
       try {
         // 🌟 2. แนบ signal และใช้ apiUrl
         const userRes = await fetch(`${apiUrl}/auth/me`, {
           method: "GET",
+          headers: {
+            ...(localToken ? { Authorization: `Bearer ${localToken}` } : {}),
+          },
           credentials: "include",
           signal,
         });
@@ -87,6 +91,9 @@ export default function ReservationsPage() {
         // 🌟 3. แนบ signal ตอนดึงข้อมูล Bookings ด้วย
         const bookingRes = await fetch(`${apiUrl}/bookings`, {
           method: "GET",
+          headers: {
+            ...(localToken ? { Authorization: `Bearer ${localToken}` } : {}),
+          },
           credentials: "include",
           cache: "no-store",
           signal,

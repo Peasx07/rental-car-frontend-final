@@ -54,13 +54,20 @@ export default function LoginPage() {
         // 🚨 เก็บ Token สำรองไว้ใน LocalStorage เผื่อเบราว์เซอร์บล็อก Cookie
         if (data.token) {
           localStorage.setItem("token", data.token);
+
+          // สร้าง cookie ฝั่ง Next.js เพื่อให้ middleware อ่านสถานะล็อกอินได้
+          await fetch("/api/auth/session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: data.token }),
+          });
         }
 
         alert("เข้าสู่ระบบสำเร็จ!");
 
-        // 🚨 ใช้ window.location.href แทน router.push เพื่อบังคับให้เบราว์เซอร์ล้างค่าหน้าเว็บ
-        // และวาร์ปไปหน้าหลักทันที
-        window.location.href = "/"; 
+        // redirect หลังจาก sync สถานะล็อกอินเรียบร้อยแล้ว
+        router.replace("/");
+        router.refresh();
       } else {
         alert("เข้าสู่ระบบไม่สำเร็จ: " + (data.message || "อีเมลหรือรหัสผ่านผิด"));
       }

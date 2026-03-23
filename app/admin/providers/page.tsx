@@ -21,8 +21,12 @@ export default function AdminProvidersDashboard() {
   // 🌟 ปรับ fetchProviders ให้รองรับ AbortSignal
   const fetchProviders = useCallback(async (signal?: AbortSignal) => {
     try {
+      const localToken = localStorage.getItem("token");
       const res = await fetch(`${apiUrl}/providers`, {
         method: "GET",
+        headers: {
+          ...(localToken ? { Authorization: `Bearer ${localToken}` } : {}),
+        },
         credentials: "include",
         signal, // 🌟 ใส่เบรก
       });
@@ -78,9 +82,13 @@ export default function AdminProvidersDashboard() {
     const method = isEditing ? "PUT" : "POST";
 
     try {
+      const localToken = localStorage.getItem("token");
       const res = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(localToken ? { Authorization: `Bearer ${localToken}` } : {}),
+        },
         credentials: "include",
         body: JSON.stringify(formData),
       });
@@ -103,8 +111,12 @@ export default function AdminProvidersDashboard() {
     if (!confirm(`ยืนยันการลบ ${name} หรือไม่?`)) return;
 
     try {
+      const localToken = localStorage.getItem("token");
       const res = await fetch(`${apiUrl}/providers/${id}`, {
         method: "DELETE",
+        headers: {
+          ...(localToken ? { Authorization: `Bearer ${localToken}` } : {}),
+        },
         credentials: "include",
       });
 
