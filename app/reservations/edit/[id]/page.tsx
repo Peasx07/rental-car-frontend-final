@@ -78,7 +78,7 @@ export default function EditReservationPage() {
     const diffTime = Math.abs(dDate.getTime() - pDate.getTime());
     const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
-    return (days * carData.dailyRate) + 1500;
+    return (days * carData.dailyRate);
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -142,7 +142,7 @@ export default function EditReservationPage() {
                 <p className="text-lg font-bold text-zinc-900">{carData.make} {carData.model || "Car Model"}</p>
               </div>
               <p className="text-sm text-zinc-600 font-bold">
-                +{(carData.dailyRate || 0).toLocaleString()} THB per day (Include 1,500 Fee)
+                +{(carData.dailyRate || 0).toLocaleString()} THB per day
               </p>
             </div>
           </div>
