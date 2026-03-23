@@ -39,24 +39,17 @@ export default function Home() {
 
   const handleLogout = async () => {
     try {
-      // 🌟 ใช้ apiUrl แทน
       await fetch(`${apiUrl}/auth/logout`, {
         method: "GET",
         credentials: "include",
       });
     } catch (err: any) {
-      console.log("Backend unreachable during logout, proceeding with local logout:", err.message);
+      console.log("Logout backend error:", err.message);
     } finally {
-      try {
-        await fetch('/api/logout', { method: 'POST' });
-      } catch (e) {
-        console.log("Local API logout failed, clearing cookies manually.");
-      }
-      
+      // 🚨 ล้างข้อมูลการเข้าสู่ระบบทั้งหมด
+      localStorage.removeItem("token");
       document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      setTimeout(() => {
-        window.location.replace("/login");
-      }, 500); 
+      window.location.replace("/login");
     }
   };
 
@@ -103,59 +96,62 @@ export default function Home() {
   };
 
   useEffect(() => {
-    // 🌟 1. สร้าง AbortController
     const controller = new AbortController();
     const signal = controller.signal;
 
     const fetchData = async () => {
+      // 🚨 ดึง Token จาก LocalStorage มาใช้เผื่อคุกกี้ไม่ทำงาน
+      const localToken = localStorage.getItem("token");
+
       try {
-        // 🌟 2. ใช้ apiUrl และแนบ signal
         const userRes = await fetch(`${apiUrl}/auth/me`, {
           method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            // 🚨 ถ้ามี Token ใน LocalStorage ให้ส่งไปใน Header ด้วย
+            ...(localToken ? { Authorization: `Bearer ${localToken}` } : {}),
+          },
           credentials: "include",
           signal,
         });
 
-        if (userRes.ok) {
-          const userData = await userRes.json();
-          if (userData.success) {
-            setUser(userData.data);
-            
-            // 🌟 3. ใช้ apiUrl และแนบ signal
-            const carsRes = await fetch(`${apiUrl}/cars`, {
-              method: "GET",
-              credentials: "include", 
-              signal,
-            });
-            const carsData = await carsRes.json();
-            if (carsData.success) {
-              const carList = carsData.data || [];
-              setCars(carList);
-              if (carList.length > 0) setSelectedCar(carList[0]);
-            }
-          } else {
-            router.push("/login");
+        const userData = await userRes.json();
+
+        if (userRes.ok && userData.success) {
+          setUser(userData.data);
+          
+          // ดึงข้อมูลรถต่อ
+          const carsRes = await fetch(`${apiUrl}/cars`, {
+            method: "GET",
+            headers: {
+               ...(localToken ? { Authorization: `Bearer ${localToken}` } : {}),
+            },
+            credentials: "include", 
+            signal,
+          });
+          const carsData = await carsRes.json();
+          if (carsData.success) {
+            const carList = carsData.data || [];
+            setCars(carList);
+            if (carList.length > 0) setSelectedCar(carList[0]);
           }
         } else {
-            router.push("/login");
+          // ถ้าไม่มีทั้งคุกกี้และ LocalStorage ที่ถูกต้อง ให้ไปหน้า Login
+          router.push("/login");
         }
       } catch (err: any) {
-        // 🌟 4. ดัก Error ถ้าผู้ใช้เปลี่ยนหน้า
-        if (err.name === 'AbortError' || err.message === 'Failed to fetch') {
-          console.log("Fetch aborted on Home page due to fast navigation.");
-        } else {
+        if (err.name !== 'AbortError') {
           console.error("Fetch Error:", err);
+          router.push("/login");
         }
       } finally {
         setLoading(false);
       }
     };
+
     fetchData();
 
-    // 🌟 5. Cleanup function
-    return () => {
-      controller.abort();
-    };
+    return () => controller.abort();
   }, [router]);
 
   // 🌟 ย้ายมาเช็ค loading ก่อน return โครงสร้างหลัก (คุณทำถูกแล้ว)
