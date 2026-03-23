@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-// 🌟 ย้าย apiUrl ออกมาไว้ข้างนอกให้เรียกใช้ง่ายและชัวร์
+// ดึง API URL จาก Env หรือใช้ Localhost เป็นค่าสำรอง
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
 
 // --- Icons ---
@@ -24,6 +24,7 @@ export default function LoginPage() {
     email: "",
     password: "",
   });
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -31,30 +32,43 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
+    
+    setLoading(true);
+    console.log("🚀 พยายามเชื่อมต่อ API ที่:", `${apiUrl}/auth/login`);
+
     try {
-      // 🌟 ใช้ apiUrl ที่ประกาศไว้
       const res = await fetch(`${apiUrl}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
+        // ✅ สำคัญมาก: ต้องใส่เพื่อให้ยอมรับ Cookie ข้ามโดเมน
         credentials: "include", 
       });
 
       const data = await res.json();
 
       if (data.success) {
-        alert("เข้าสู่ระบบสำเร็จ!");
+        console.log("✅ Login Success! ข้อมูลที่ได้รับ:", data);
+        
+        // 🚨 เก็บ Token สำรองไว้ใน LocalStorage เผื่อเบราว์เซอร์บล็อก Cookie
         if (data.token) {
           localStorage.setItem("token", data.token);
         }
-        window.location.href = "/";
+
+        alert("เข้าสู่ระบบสำเร็จ!");
+
+        // 🚨 ใช้ window.location.href แทน router.push เพื่อบังคับให้เบราว์เซอร์ล้างค่าหน้าเว็บ
+        // และวาร์ปไปหน้าหลักทันที
+        window.location.href = "/"; 
       } else {
-        alert("เข้าสู่ระบบไม่สำเร็จ: " + data.message);
+        alert("เข้าสู่ระบบไม่สำเร็จ: " + (data.message || "อีเมลหรือรหัสผ่านผิด"));
       }
     } catch (error: any) {
-      // 🌟 ดัก Error กรณีที่ติดต่อ Backend ไม่ได้เลย
-      console.error("Login Error:", error);
-      alert(`ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้: โปรดตรวจสอบว่า Backend รันอยู่ (Error: ${error.message})`);
+      console.error("❌ Login Error:", error);
+      alert(`ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้: โปรดตรวจสอบ Backend (Error: ${error.message})`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -67,8 +81,14 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md p-10 bg-white border border-zinc-100 rounded-3xl shadow-xl">
         <div className="flex border-b border-zinc-100 mb-8">
-          <div className="w-1/2 py-4 text-center text-sm font-semibold text-blue-600 border-b-2 border-blue-600">LOGIN</div>
-          <a href="/register" className="w-1/2 py-4 text-center text-sm font-semibold text-zinc-400 hover:text-zinc-600">REGISTER</a>
+          <div className="w-1/2 py-4 text-center text-sm font-semibold text-blue-600 border-b-2 border-blue-600 uppercase">Login</div>
+          <button 
+            type="button"
+            onClick={() => router.push('/register')}
+            className="w-1/2 py-4 text-center text-sm font-semibold text-zinc-400 hover:text-zinc-600 uppercase"
+          >
+            Register
+          </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -79,7 +99,7 @@ export default function LoginPage() {
               <input 
                 type="email" name="email" required onChange={handleChange}
                 placeholder="email@example.com"
-                className="w-full px-4 py-3 pl-12 rounded-xl border border-zinc-200 focus:ring-1 focus:ring-blue-400 focus:outline-none transition-all"
+                className="w-full px-4 py-3 pl-12 rounded-xl border border-zinc-200 focus:ring-1 focus:ring-blue-400 focus:outline-none transition-all text-black"
               />
             </div>
           </div>
@@ -91,13 +111,17 @@ export default function LoginPage() {
               <input 
                 type="password" name="password" required onChange={handleChange}
                 placeholder="••••••••"
-                className="w-full px-4 py-3 pl-12 rounded-xl border border-zinc-200 focus:ring-1 focus:ring-blue-400 focus:outline-none transition-all"
+                className="w-full px-4 py-3 pl-12 rounded-xl border border-zinc-200 focus:ring-1 focus:ring-blue-400 focus:outline-none transition-all text-black"
               />
             </div>
           </div>
 
-          <button type="submit" className="w-full mt-6 rounded-xl bg-blue-600 py-3.5 font-bold text-white hover:bg-blue-700 transition-all">
-            เข้าสู่ระบบ / Login
+          <button 
+            type="submit" 
+            disabled={loading}
+            className={`w-full mt-6 rounded-xl py-3.5 font-bold text-white transition-all ${loading ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700'}`}
+          >
+            {loading ? "กำลังตรวจสอบ..." : "เข้าสู่ระบบ / Login"}
           </button>
         </form>
       </div>
